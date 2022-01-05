@@ -20,17 +20,17 @@ export class BlogLambdaToStepfunctionsStack extends Stack {
       entry: `${__dirname}/../lambda/mockUser.ts`,
     });
 
-    const table = new Table(this, "SomeTable", {
+    const table = new Table(this, "BlogLambdaSFTable", {
       partitionKey: {
         name: "PK",
         type: AttributeType.STRING,
       },
       billingMode: BillingMode.PAY_PER_REQUEST,
-      tableName: "SomeTable",
+      tableName: "BlogLambdaSFTable",
     });
 
-    const mockExternalApi = new RestApi(this, "ExternalAPI", {
-      restApiName: "ExternalAPI",
+    const mockExternalApi = new RestApi(this, "MockExternalAPI", {
+      restApiName: "MockExternalAPI",
     });
 
     mockExternalApi.root
@@ -50,8 +50,8 @@ export class BlogLambdaToStepfunctionsStack extends Stack {
 
     table.grantReadWriteData(bigLambda);
 
-    const api = new RestApi(this, "SomeAPI", {
-      restApiName: "SomeAPI",
+    const api = new RestApi(this, "BlogLambdaSFAPI", {
+      restApiName: "BlogLambdaSFAPI",
     });
 
     api.root
