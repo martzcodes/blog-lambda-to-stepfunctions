@@ -98,7 +98,6 @@ export const BlogStepFunction = (scope: Construct, props: BlogStepFunctionProps)
       table: props.table,
       resultPath: "$.inserted",
     });
-    dynamoInsert.next(userInserted);
 
     const dynamoUpdate = new DynamoUpdateItem(scope, "Update User Name", {
       key: {
@@ -136,8 +135,6 @@ export const BlogStepFunction = (scope: Construct, props: BlogStepFunctionProps)
       },
     });
 
-    dynamoUpdate.next(userWasUpdated);
-
     const isUserLocked = new Choice(scope, "User Locked?", {})
       .when(Condition.isNotPresent("$.internal.Item"), dynamoInsert)
       .when(
@@ -166,6 +163,8 @@ export const BlogStepFunction = (scope: Construct, props: BlogStepFunctionProps)
       .next(callExternal)
       .next(dynamoGet)
       .next(isUserLocked);
+      dynamoInsert.next(userInserted);
+      dynamoUpdate.next(userWasUpdated);
 
     console.log(JSON.stringify(pass.toStateJson(), null, 2));
     console.log(JSON.stringify(callExternal.toStateJson(), null, 2));
