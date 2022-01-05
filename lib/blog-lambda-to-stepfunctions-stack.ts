@@ -9,16 +9,13 @@ import {
 } from "aws-cdk-lib/aws-apigateway";
 import { RetentionDays } from "aws-cdk-lib/aws-logs";
 import { BlogStepFunction } from "./step-function";
+import { mockExternal } from "./mock-external";
 
 export class BlogLambdaToStepfunctionsStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    const mockUser = new NodejsFunction(this, "mockUserFn", {
-      runtime: Runtime.NODEJS_14_X,
-      architecture: Architecture.ARM_64,
-      entry: `${__dirname}/../lambda/mockUser.ts`,
-    });
+    const mockExternalApi = mockExternal(this);
 
     const table = new Table(this, "BlogLambdaSFTable", {
       partitionKey: {
@@ -28,14 +25,6 @@ export class BlogLambdaToStepfunctionsStack extends Stack {
       billingMode: BillingMode.PAY_PER_REQUEST,
       tableName: "BlogLambdaSFTable",
     });
-
-    const mockExternalApi = new RestApi(this, "MockExternalAPI", {
-      restApiName: "MockExternalAPI",
-    });
-
-    mockExternalApi.root
-      .addResource("{userId}")
-      .addMethod("GET", new LambdaIntegration(mockUser));
 
     const bigLambda = new NodejsFunction(this, "bigLambda", {
       runtime: Runtime.NODEJS_14_X,
