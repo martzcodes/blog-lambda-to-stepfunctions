@@ -37,10 +37,12 @@ export const handler = async (
     return {
       statusCode: 200,
       body: JSON.stringify({
+        id: externalUser.userId,
         name: internalUser.name,
         status: internalUser.status,
         userLocked: true,
         nameChanged: false,
+        inserted: false
       }),
     };
   }
