@@ -3,8 +3,12 @@ import { Construct } from "constructs";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Architecture, Runtime } from "aws-cdk-lib/aws-lambda";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
-import { LambdaIntegration, RestApi } from "aws-cdk-lib/aws-apigateway";
+import {
+  LambdaIntegration,
+  RestApi,
+} from "aws-cdk-lib/aws-apigateway";
 import { RetentionDays } from "aws-cdk-lib/aws-logs";
+import { BlogStepFunction } from "./step-function";
 
 export class BlogLambdaToStepfunctionsStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -25,12 +29,11 @@ export class BlogLambdaToStepfunctionsStack extends Stack {
       tableName: "SomeTable",
     });
 
-    const api = new RestApi(this, "SomeAPI", {
-      restApiName: "SomeAPI",
+    const mockExternalApi = new RestApi(this, "ExternalAPI", {
+      restApiName: "ExternalAPI",
     });
 
-    api.root
-      .addResource("external")
+    mockExternalApi.root
       .addResource("{userId}")
       .addMethod("GET", new LambdaIntegration(mockUser));
 
@@ -40,16 +43,23 @@ export class BlogLambdaToStepfunctionsStack extends Stack {
       entry: `${__dirname}/../lambda/bigLambda.ts`,
       environment: {
         TABLE_NAME: table.tableName,
-        API_URL: 'https://a6iwkx9xkd.execute-api.us-east-1.amazonaws.com/prod/', // set this to your API URL, making this a string avoids a circular dependency
+        API_URL: mockExternalApi.url,
       },
       logRetention: RetentionDays.ONE_DAY,
     });
 
     table.grantReadWriteData(bigLambda);
 
+    const api = new RestApi(this, "SomeAPI", {
+      restApiName: "SomeAPI",
+    });
+
     api.root
       .addResource("big")
       .addResource("{userId}")
       .addMethod("GET", new LambdaIntegration(bigLambda));
+
+    BlogStepFunction(this, { api, mockExternalApi, table });
+
   }
 }

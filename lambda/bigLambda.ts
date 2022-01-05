@@ -8,6 +8,7 @@ const db = new DocumentClient();
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  console.log(`API_URL: ${API_URL}`);
   if (!event || !event.pathParameters) {
     throw new Error("No Event");
   }
@@ -16,7 +17,7 @@ export const handler = async (
   }
   // make axios call to "external" api to get user name
   const { data: externalUser } = await axios.get(
-    `${API_URL}/external/${event.pathParameters.userId}`
+    `${API_URL}/${event.pathParameters.userId}`
   );
   console.log(`external user: ${JSON.stringify(externalUser, null, 2)}`);
 
@@ -32,10 +33,12 @@ export const handler = async (
   console.log(`existing user: ${JSON.stringify(internalUser, null, 2)}`);
 
   // if user locked return
-  if (internalUser && internalUser.locked) {
+  if (internalUser && internalUser.status === 'LOCKED') {
     return {
       statusCode: 200,
       body: JSON.stringify({
+        name: internalUser.name,
+        status: internalUser.status,
         userLocked: true,
         nameChanged: false,
       }),
@@ -48,20 +51,21 @@ export const handler = async (
     Key: {
       PK: externalUser.userId,
     },
-    UpdateExpression: `SET #name = :name, ${
+    UpdateExpression: `SET #name = :name, #status = :status, ${
       !internalUser
         ? "#history = :history"
         : "#history.#historical = if_not_exists(#history.#historical, :historical)"
     }`,
-    ExpressionAttributeNames: { "#name": "name", "#history": "history" },
+    ExpressionAttributeNames: { "#name": "name", "#history": "history", "#status": "status" },
     ExpressionAttributeValues: {
       ":name": externalUser.name,
+      ":status": "ACTIVE"
     },
-    ReturnValues: 'UPDATED_NEW',
+    ReturnValues: "UPDATED_NEW",
   };
   if (!internalUser) {
     updateItemInput!.ExpressionAttributeValues![":history"] = {
-      [externalUser.name]: new Date().getTime(),
+      [externalUser.name]: new Date().toISOString(),
     };
   } else {
     updateItemInput!.ExpressionAttributeNames!["#historical"] =
@@ -75,8 +79,12 @@ export const handler = async (
   return {
     statusCode: 200,
     body: JSON.stringify({
+      id: externalUser.userId,
+      name: externalUser.name,
+      status: internalUser?.status || 'ACTIVE',
       userLocked: false,
       nameChanged: !!updatedItem?.Attributes?.name,
+      inserted: !!updatedItem?.Attributes?.PK,
     }),
   };
 };
